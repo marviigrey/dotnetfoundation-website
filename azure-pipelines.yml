@@ -8,8 +8,7 @@ pr:
     include:
       - master
 
-pool:
-  vmImage: 'windows-latest'
+pool: az-400
 
 variables:
   BuildConfiguration: 'Release'
