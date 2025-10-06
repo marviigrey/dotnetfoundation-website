@@ -16,9 +16,9 @@ variables:
 
 steps:
 - task: UseDotNet@2
-  displayName: 'Use .NET Core SDK 3.0.x'
+  displayName: 'Use .NET Core SDK 3.1.x'
   inputs:
-    version: 3.0.x
+    version: '3.1.x'  # Changed to 3.1 (LTS) instead of 3.0 (EOL)
 
 - task: DotNetCoreCLI@2
   displayName: Build and Publish
@@ -26,9 +26,9 @@ steps:
     command: publish
     publishWebProjects: false
     projects: src/dotnetfoundation-website.csproj
-    arguments: '-c $(BuildConfiguration) --output $(build.artifactstagingdirectory)\website\ '
+    arguments: '-c $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/website'  # Fixed: / instead of \
     zipAfterPublish: True
 
-- publish: $(Build.ArtifactStagingDirectory)\website
+- publish: $(Build.ArtifactStagingDirectory)/website  # Fixed: / instead of \
   displayName: Publish website artifact
-  artifact: website 
+  artifact: website
