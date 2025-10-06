@@ -16,9 +16,9 @@ variables:
 
 steps:
 - task: UseDotNet@2
-  displayName: 'Use .NET Core SDK 3.1.x'
+  displayName: 'Use .NET 6 SDK'
   inputs:
-    version: '3.1.x'  # Changed to 3.1 (LTS) instead of 3.0 (EOL)
+    version: '6.x'
 
 - task: DotNetCoreCLI@2
   displayName: Build and Publish
@@ -26,9 +26,105 @@ steps:
     command: publish
     publishWebProjects: false
     projects: src/dotnetfoundation-website.csproj
-    arguments: '-c $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/website'  # Fixed: / instead of \
+    arguments: '-c $(BuildConfiguration) --output $(build.artifactstagingdirectory)/website/'
     zipAfterPublish: True
 
-- publish: $(Build.ArtifactStagingDirectory)/website  # Fixed: / instead of \
+- task: XplatGenerateReleaseNotes@4
+  displayName: Generate Release Notes
+  inputs:
+    outputfile: '$(Build.Repository.LocalPath)/releasenotes_$(Build.BuildId).md'  # Changed \ to /
+    templateLocation: 'InLine'
+    inlinetemplate: |
+      ## Build {{buildDetails.buildNumber}}
+      * **Branch**: {{buildDetails.sourceBranch}}
+      * **Author**: {{buildDetails.requestedFor.displayName}}
+      * **Commit**: {{buildDetails.sourceVersion}}
+    dumpPayloadToConsole: false
+    dumpPayloadToFile: false
+    replaceFile: true
+    getParentsAndChildren: false
+    getAllParents: false
+    getIndirectPullRequests: false
+    stopOnError: false
+    considerPartiallySuccessfulReleases: false
+    checkForManuallyLinkedWI: false
+    wiqlFromTarget: 'WorkItems'
+
+- publish: $(Build.ArtifactStagingDirectory)/website
   displayName: Publish website artifact
   artifact: website
+
+# # Debug: Verify release notes file was created
+# - script: |
+#     echo "Build Repository LocalPath: $(Build.Repository.LocalPath)"
+#     echo "Listing files in repository root:"
+#     ls -la $(Build.Repository.LocalPath)/
+#     echo ""
+#     echo "Looking for release notes file:"
+#     ls -la $(Build.Repository.LocalPath)/releasenotes_$(Build.BuildId).md || echo "File not found!"
+#     if [ -f "$(Build.Repository.LocalPath)/releasenotes_$(Build.BuildId).md" ]; then
+#       echo "File content:"
+#       cat $(Build.Repository.LocalPath)/releasenotes_$(Build.BuildId).md
+#     fi
+#   displayName: 'Debug: Verify release notes file'
+
+# # Create wiki folder if it doesn't exist
+# - script: |
+#     mkdir -p $(Build.Repository.LocalPath)/wiki
+#     echo "Wiki folder created/verified"
+#     ls -la $(Build.Repository.LocalPath)/
+#   displayName: 'Create wiki folder'
+
+# - task: CopyFiles@2
+#   displayName: 'Copy Release notes to Wiki Folder'
+#   inputs:
+#     SourceFolder: '$(Build.Repository.LocalPath)'
+#     Contents: 'releasenotes_$(Build.BuildId).md'
+#     TargetFolder: '$(Build.Repository.LocalPath)/wiki'
+#     CleanTargetFolder: false
+#     OverWrite: true
+
+# # Debug: Verify copy was successful
+# - script: |
+#     echo "Checking wiki folder contents:"
+#     ls -la $(Build.Repository.LocalPath)/wiki/
+#     if [ -f "$(Build.Repository.LocalPath)/wiki/releasenotes_$(Build.BuildId).md" ]; then
+#       echo "File successfully copied!"
+#     else
+#       echo "ERROR: File was not copied!"
+#       exit 1
+#     fi
+#   displayName: 'Debug: Verify copy succeeded'
+
+# - script: |
+#     rm -f "$(Build.Repository.LocalPath)/releasenotes_$(Build.BuildId).md"
+#   displayName: "Delete original Release note file"
+
+# - task: CmdLine@2
+#   displayName: 'Commit Release notes to Wiki repository'
+#   inputs:
+#     script: |
+#       # Clone the wiki repository
+#       git clone https://$(System.AccessToken)@dev.azure.com/lagostechsolutions/test-web/_git/test-web.wiki wiki-repo
+      
+#       cd wiki-repo
+      
+#       # Copy the release notes
+#       cp $(Build.Repository.LocalPath)/wiki/releasenotes_$(Build.BuildId).md ./releasenotes_$(Build.BuildId).md
+      
+#       # Configure git
+#       git config user.email "yemi@lagotechsolutions.com"
+#       git config user.name "Yemi Adeniyi"
+      
+#       # Add and commit
+#       git add releasenotes_$(Build.BuildId).md
+      
+#       if git diff-index --quiet HEAD --; then
+#         echo "No changes to commit"
+#       else
+#         git commit -m "Add release notes for Build $(Build.BuildId)"
+#         git push origin HEAD:wikiMaster
+#       fi
+      
+#       cd ..
+#       rm -rf wiki-repo
