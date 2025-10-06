@@ -1,0 +1,18 @@
+name: Trigger Azure pipeline
+on: 
+  push: 
+   branches: 
+    - master
+    - main
+
+jobs:
+  build: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger AZ-DevOps Pipeline
+        uses: Azure/pipelines@v1
+        with:
+         azure-devops-project-url: ${{ secrets.AZURE_DEVOPS_PROJECT_URL }}
+         azure-pipeline-name: 'marviigrey.dotnetfoundation-website'
+         azure-devops-token: ${{ secrets.AZURE_DEVOPS_TOKEN }}
+    
